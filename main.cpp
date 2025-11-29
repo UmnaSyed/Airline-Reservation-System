@@ -521,19 +521,6 @@ void generateDummyFlights(BST &flights, int count) {
     }
 }
 
-void collectFlights(Flight* node, const string &origin, const string &dest, Flight* arr[], int &idx) {
-    if (!node) return;
-
-    collectFlights(node->getLeft(), origin, dest, arr, idx);
-
-    if ((origin.empty() || node->getOrigin() == origin) &&
-        (dest.empty() || node->getDest() == dest)) {
-        arr[idx++] = node;
-    }
-
-    collectFlights(node->getRight(), origin, dest, arr, idx);
-}
-
 
 int main() {
     BST flights;
@@ -542,16 +529,27 @@ int main() {
     int airportCount = 0;
 
     srand(time(0));
-    generateDummyFlights(flights, 500);
-    FileManager::saveAllFlights(flights.getRoot());  
     
+    // Check if data exists, if not generate dummy data
+    ifstream checkFile("flights.txt");
+    if (!checkFile) {
+        cout << "No existing data found. Generating 500 dummy flights...\n";
+        generateDummyFlights(flights, 500);
+        FileManager::saveAllFlights(flights.getRoot());
+        cout << "Dummy data generated and saved!\n\n";
+    }
+    checkFile.close();
+    
+    // Load flights from file
     FileManager::loadFlights(flights, g, airports, airportCount);
+    
     while (true) {
-        cout << " 1.Add Flight\n 2.List Flights\n 3.Reserve Seat\n 4.Cancel Seat\n 5.Find Cheapest Route\n "
+        cout << "\n 1.Add Flight\n 2.List Flights\n 3.Reserve Seat\n 4.Cancel Seat\n 5.Find Cheapest Route\n "
                 "6.Display Waitlist\n 7.Search Flights\n 8.Sort Flights by Price\n 9.Delete Flight\n "
                 "10.Manage Waitlist\n 11.Round-trip Booking\n 12.Exit\nChoice: ";
         int ch;
         cin >> ch;
+        
         if (ch == 1) {
             int cap;
             string id, airline, aT, dT;
@@ -565,9 +563,9 @@ int main() {
             cin >> o;
             cout << "Destination: ";
             cin >> d;
-            cout << "Departure Time";
+            cout << "Departure Time: ";
             cin >> dT;
-            cout << "Arrival Time";
+            cout << "Arrival Time: ";
             cin >> aT;
             cout << "Price: ";
             cin >> price;
@@ -576,6 +574,11 @@ int main() {
             flights.insertFlight(id, airline, o, d, dT, aT, price, cap);
             int oi = airports.getAirportIndex(o, airportCount);
             int di = airports.getAirportIndex(d, airportCount);
+            if (oi == -1 || di == -1)
+            {
+                cout << "Error: Airport table full!\n";
+                continue;
+            }
             g.addEdge(oi, di, price);
             g.airportCount = airportCount;
         }
@@ -644,6 +647,11 @@ int main() {
             cin >> d;
             int oi = airports.getAirportIndex(o, airportCount);
             int di = airports.getAirportIndex(d, airportCount);
+            if (oi == -1 || di == -1)
+            {
+                cout << "Error: Airport not found or table full!\n";
+                continue;
+            }
             double dist[MAX_AIRPORTS];
             int parent[MAX_AIRPORTS];
             bool vis[MAX_AIRPORTS];
@@ -706,42 +714,21 @@ int main() {
             flights.displayByOriginDest(flights.getRoot(), o, d);
         }
         else if (ch == 8) {
-            string origin, dest;
-            cout << "Origin (or empty for any): ";
-            cin.ignore();
-            getline(cin, origin);
-            cout << "Destination (or empty for any): ";
-            getline(cin, dest);
-
-            Flight* arr[1000]; // fixed-size array
+            Flight *arr[1000];
             int idx = 0;
+            flights.sortByPrice(flights.getRoot(), arr, idx);  
 
-        // Collect matching flights
-            collectFlights(flights.getRoot(), origin, dest, arr, idx);
-
-            if (idx == 0) {
-                cout << "No flights found for the given route.\n";
-            } 
-            
-            else {
-                // Sort by price using selection sort
-                for (int i = 0; i < idx - 1; i++) {
-                    int minIdx = i;
-                    for (int j = i + 1; j < idx; j++) {
-                        if (arr[j]->getPrice() < arr[minIdx]->getPrice())
-                            minIdx = j;
-                    }
-                    if (minIdx != i)
-                        swap(arr[i], arr[minIdx]);
-                }
-
-                // Display sorted flights
-                for (int i = 0; i < idx; i++)
-                    arr[i]->display();
+            for (int i = 0; i < idx - 1; i++) {
+                int minIdx = i;
+                for (int j = i + 1; j < idx; j++)
+                    if (arr[j]->getPrice() < arr[minIdx]->getPrice())
+                        minIdx = j;
+                if (minIdx != i)
+                    std::swap(arr[i], arr[minIdx]);
             }
+            for (int i = 0; i < idx; i++)
+                arr[i]->display();
         }
-
-
         else if (ch == 9) {
             string id;
             cout << "Flight ID to delete: ";
@@ -774,7 +761,7 @@ int main() {
                     int id;
                     int p;
                     string name;
-                    cout<< "Passenger name: ";
+                    cout << "Passenger name: ";
                     cin >> name;
                     cout << "Passenger id: ";
                     cin >> id;
