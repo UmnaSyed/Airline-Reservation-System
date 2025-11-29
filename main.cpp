@@ -105,6 +105,17 @@ public:
             swap(arr[i], arr[best]);
             i = best;
         }
+
+        
+    }
+
+    bool hasPassengerID(int ID) {
+        for (int i = 0; i < size; i++) {
+            if (arr[i].id == ID) {
+                return true;
+            }
+        }
+        return false;
     }
 
     SeatRequest pop() {
@@ -644,14 +655,17 @@ int main() {
             cout << "Flight ID: ";
             cin >> id;
             Flight *f = flights.find(flights.getRoot(), id);
+           
             if (!f) {
                 cout << "Not found!\n";
                 continue;
             }
+
             cout << "Passenger Name: ";
             cin >> name;
             cout << "Priority (1-3): ";
             cin >> pr;
+           
             if (pr < 1 || pr > 3) {
                 cout << "Error: Priority must be between 1 and 3!\n";
                 continue;
@@ -659,6 +673,7 @@ int main() {
 
             cout << "Passenger ID: ";
             cin >> passID;
+           
             if (f->getBooked() < f->getCapacity())
             {
                 f->bookSeat();
@@ -667,6 +682,12 @@ int main() {
             }
             else
             {
+                
+                if (f->getWaitlist().hasPassengerID(passID)) {
+                    cout << "Error: Passenger ID " << passID << " is already in waitlist!\n";
+                    continue;
+                }
+
                 f->getWaitlist().push(name, passID, pr);
                 cout << "Added to waitlist.\n";
             }
