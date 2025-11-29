@@ -237,11 +237,12 @@ public:
         return waitlist; 
     }
 
-    void display()
-    {
-        cout << "Flight " << id << " | " << origin << " -> " << dest << " | $" << price
-             << " | Seats: " << booked << "/" << capacity << endl;
+    void display() {
+    cout << "Flight " << id << " | " << airline << " | " << origin << " -> " << dest
+         << " | Departure: " << departureTime << " Arrival: " << arrivalTime
+         << " | $" << price << " | Seats: " << booked << "/" << capacity << endl;
     }
+
 };
 
 class BST {
@@ -435,7 +436,7 @@ public:
         ofstream wf("waitlists.txt", ios::app);
         SeatHeap &w = node->getWaitlist();
         for (int i = 0; i < w.getSize(); i++)
-            wf << node->getID() << " " << w.get(i).name << " " << w.get(i).priority << "\n";
+            wf << node->getID() << " " << w.get(i).name << " " << w.get(i).id << " " << w.get(i).priority << "\n";
         wf.close();
         saveFlights(node->getRight());
     }
@@ -459,7 +460,7 @@ public:
         ifstream win("waitlists.txt"); {
             int pr, ID;
             string fid, name;
-            while (win >> fid >> name >> pr)
+            while (win >> fid >> name >> ID >> pr)
             {
                 Flight *f = flights.find(flights.getRoot(), fid);
                 if (f)
@@ -681,6 +682,7 @@ int main() {
                     int p;
                     string name;
                     cout<< "Passenger name: ";
+                    cin >> name;
                     cout << "Passenger id: ";
                     cin >> id;
                     cout << "New priority: ";
