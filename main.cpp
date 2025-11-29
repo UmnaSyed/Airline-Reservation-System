@@ -71,8 +71,10 @@ public:
     }
 
     void push(string name, int ID,  int priority){
-        if (size >= MAX_WAIT)
+        if (size >= MAX_WAIT){
+        cout << "Error: Waitlist if full!" << endl;
             return;
+        }
         arr[size] = SeatRequest(name, ID, priority, ++timeCount);
         heapifyUp(size);
         size++;
@@ -251,7 +253,6 @@ public:
     bool cancelSeatByPassenger(const string &name, int ID) {
         for (int i = 0; i < booked; i++) {
             if (bookedPassengers[i].id == ID && bookedPassengers[i].name == name) {
-                // Remove passenger
                 bookedPassengers[i] = bookedPassengers[--booked];
                 return true;
             }
@@ -579,6 +580,18 @@ int main() {
                 "10.Manage Waitlist\n 11.Round-trip Booking\n 12.Exit\nChoice: ";
         int ch;
         cin >> ch;
+        if (!(cin >> ch)) {
+            cout << "Invalid input! Please enter a valid number.\n";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            continue;
+        }
+        
+        if (ch < 1 || ch > 12) {
+            cout << "Invalid choice! Please enter a number between 1-12.\n";
+            continue;
+        }
+
         if (ch == 1) {
             int cap;
             string id, airline, aT, dT;
@@ -600,14 +613,30 @@ int main() {
             cin >> price;
             cout << "Capacity: ";
             cin >> cap;
+            if (cap <= 0) {
+                cout << "Error: Capacity must be at least 1!\n";
+                continue;
+            }
+
+            if (flights.find(flights.getRoot(), id)) {
+                cout << "Error: Flight ID '" << id << "' already exists!\n";
+                continue;
+            }
+            
             flights.insertFlight(id, airline, o, d, dT, aT, price, cap);
             int oi = airports.getAirportIndex(o, airportCount);
             int di = airports.getAirportIndex(d, airportCount);
             g.addEdge(oi, di, price);
             g.airportCount = airportCount;
         }
-        else if (ch == 2)
+        else if (ch == 2){
+            if (!flights.getRoot()) {
+                cout << "No flights available in the system.\n";
+                continue;
+            }
+
             flights.inorder(flights.getRoot());
+        }
         else if (ch == 3)
         {
             int pr, passID;
@@ -623,6 +652,11 @@ int main() {
             cin >> name;
             cout << "Priority (1-3): ";
             cin >> pr;
+            if (pr < 1 || pr > 3) {
+                cout << "Error: Priority must be between 1 and 3!\n";
+                continue;
+            }
+
             cout << "Passenger ID: ";
             cin >> passID;
             if (f->getBooked() < f->getCapacity())
@@ -777,6 +811,11 @@ int main() {
             string id;
             cout << "Flight ID to delete: ";
             cin >> id;
+            if (!flights.find(flights.getRoot(), id)) {
+                cout << "Error: Flight '" << id << "' not found!\n";
+                continue;
+            }
+
             flights.deleteFlight(id);
             cout << "Flight deleted.\n";
         }
