@@ -578,6 +578,143 @@ void quickSort(Flight** arr, int low, int high) {
     }
 }
 
+
+void testRuntimes(BST &flights, Graph &g, AirportTable &airports, int airportcount) {
+    cout << "\nTESTING RUNTIMES\n\n";
+    
+    Flight* arr[1000];
+    int count = 0;
+    flights.sortByPrice(flights.getRoot(), arr, count);
+    
+    if (count == 0) {
+        cout << "No flights to test. Please add flights first.\n";
+        return;
+    }
+    
+    cout << "Testing with " << count << " flights\n\n";
+    
+    cout << "BST Search Test\n";
+    clock_t start = clock();
+    flights.find(flights.getRoot(), "F250");
+    clock_t end = clock();
+    double time = ((double)(end - start) / CLOCKS_PER_SEC) * 1000.0;
+    cout << "BST Search for F250: " << time << " ms\n\n";
+    
+    cout << "Linear Search Test\n";
+    start = clock();
+    for (int i = 0; i < count; i++) {
+        if (arr[i]->getID() == "F250") break;
+    }
+    end = clock();
+    time = ((double)(end - start) / CLOCKS_PER_SEC) * 1000.0;
+    cout << "Linear Search for F250: " << time << " ms\n\n";
+    
+    cout << "Selection Sort Test\n";
+    Flight* arr1[1000];
+    for (int i = 0; i < count; i++) arr1[i] = arr[i];
+    
+    start = clock();
+    for (int i = 0; i < count - 1; i++) {
+        int minIdx = i;
+        for (int j = i + 1; j < count; j++)
+            if (arr1[j]->getPrice() < arr1[minIdx]->getPrice())
+                minIdx = j;
+        if (minIdx != i)
+            swap(arr1[i], arr1[minIdx]);
+    }
+    end = clock();
+    time = ((double)(end - start) / CLOCKS_PER_SEC) * 1000.0;
+    cout << "Selection Sort: " << time << " ms\n\n";
+    
+    cout << "Quick Sort Test\n";
+    Flight* arr2[1000];
+    for (int i = 0; i < count; i++) arr2[i] = arr[i];
+    
+    start = clock();
+    quickSort(arr2, 0, count - 1);
+    end = clock();
+    time = ((double)(end - start) / CLOCKS_PER_SEC) * 1000.0;
+    cout << "Quick Sort: " << time << " ms\n\n";
+    
+    cout << "Bubble Sort Test\n";
+    Flight* arr3[1000];
+    for (int i = 0; i < count; i++) arr3[i] = arr[i];
+    
+    start = clock();
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+            if (arr3[j]->getPrice() > arr3[j + 1]->getPrice()) {
+                swap(arr3[j], arr3[j + 1]);
+            }
+        }
+    }
+    end = clock();
+    time = ((double)(end - start) / CLOCKS_PER_SEC) * 1000.0;
+    cout << "Bubble Sort: " << time << " ms\n\n";
+    
+    cout << "Heap Push Operations Test\n";
+    Flight* testFlight = flights.find(flights.getRoot(), "F1");
+    if (testFlight) {
+        start = clock();
+        for (int i = 0; i < 50; i++) {
+            testFlight->getWaitlist().push("TestPass" + to_string(i), 9000 + i, 2);
+        }
+        end = clock();
+        time = ((double)(end - start) / CLOCKS_PER_SEC) * 1000.0;
+        cout << "50 Heap Push operations: " << time << " ms\n\n";
+    }
+
+    cout << "Dijkstra's Shortest Path Test\n";
+    
+    if (g.airportCount < 2) {
+        cout << "Not enough airports to test Dijkstra.\n";
+    } else {
+        int sourceIdx = 0;
+        int destIdx = g.airportCount - 1;
+        
+        start = clock();
+        
+        double dist[MAX_AIRPORTS];
+        int parent[MAX_AIRPORTS];
+        bool vis[MAX_AIRPORTS];
+        
+        for (int i = 0; i < g.airportCount; i++) {
+            dist[i] = INF;
+            vis[i] = false;
+            parent[i] = -1;
+        }
+        dist[sourceIdx] = 0;
+        
+        for (int count = 0; count < g.airportCount - 1; count++) {
+            double minv = INF;
+            int u = -1;
+            for (int i = 0; i < g.airportCount; i++)
+                if (!vis[i] && dist[i] <= minv) {
+                    minv = dist[i];
+                    u = i;
+                }
+            if (u == -1) break;
+            vis[u] = true;
+            
+            for (EdgeNode* e = g.adj[u]; e; e = e->next)
+                if (!vis[e->dest] && dist[u] + e->cost < dist[e->dest]) {
+                    dist[e->dest] = dist[u] + e->cost;
+                    parent[e->dest] = u;
+                }
+        }
+        
+        end = clock();
+        time = ((double)(end - start) / CLOCKS_PER_SEC) * 1000.0;
+        
+        cout << "Dijkstra on " << g.airportCount << " airports: " << time << " ms\n";
+        if (dist[destIdx] < INF) {
+            cout << "Shortest path cost: $" << dist[destIdx] << "\n\n";
+        } else {
+            cout << "No path found.\n\n";
+        }
+    }
+}
+
 int main() {
     BST flights;
     Graph g;
@@ -588,9 +725,8 @@ int main() {
     while (true) {
         cout << " 1.Add Flight\n 2.List Flights\n 3.Reserve Seat\n 4.Cancel Seat\n 5.Find Cheapest Route\n "
                 "6.Display Waitlist\n 7.Search Flights\n 8.Sort Flights by Price\n 9.Delete Flight\n "
-                "10.Manage Waitlist\n 11.Round-trip Booking\n 12.Exit\nChoice: ";
+                "10.Manage Waitlist\n 11.Round-trip Booking\n 12.Test Runtimes\n 13.Exit\nChoice: ";
         int ch;
-        cin >> ch;
         if (!(cin >> ch)) {
             cout << "Invalid input! Please enter a valid number.\n";
             cin.clear();
@@ -598,7 +734,7 @@ int main() {
             continue;
         }
         
-        if (ch < 1 || ch > 12) {
+        if (ch < 1 || ch > 13) {
             cout << "Invalid choice! Please enter a number between 1-12.\n";
             continue;
         }
@@ -682,7 +818,7 @@ int main() {
             }
             else
             {
-                
+
                 if (f->getWaitlist().hasPassengerID(passID)) {
                     cout << "Error: Passenger ID " << passID << " is already in waitlist!\n";
                     continue;
@@ -915,7 +1051,12 @@ int main() {
                 cout << "Added to return waitlist.\n";
             }
         }
-        else if (ch == 12) {
+        else if (ch == 12)
+        {
+            testRuntimes(flights, g, airports, airportCount);
+        }
+        
+        else if (ch == 13) {
             remove("flights.txt");
             remove("waitlists.txt");
             FileManager::saveAllFlights(flights.getRoot());
