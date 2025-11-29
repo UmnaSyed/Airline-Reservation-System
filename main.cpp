@@ -155,7 +155,8 @@ public:
 
 class Flight
 {
-    int id;
+    string id;
+    string airline, departureTime, arrivalTime;
     string origin, dest;
     double price;
     int capacity, booked;
@@ -164,35 +165,77 @@ class Flight
     Flight *right;
 
 public:
-    Flight(int fid, string o, string d, double p, int c, int b = 0)
-    {
-        id = fid;
-        origin = o;
+    Flight(string fid, string a, string o, string d, string dep, string arr, double p, int c, int b = 0) {
+        id = fid; 
+        airline = a; 
+        origin = o; 
         dest = d;
-        price = p;
-        capacity = c;
+        departureTime = dep; 
+        arrivalTime = arr; 
+        price = p; 
+        capacity = c; 
         booked = b;
         left = right = nullptr;
     }
 
-    Flight *getLeft() { return left; }
-    Flight *getRight() { return right; }
-    void setLeft(Flight *l) { left = l; }
-    void setRight(Flight *r) { right = r; }
-
-    int getID() { return id; }
-    string getOrigin() { return origin; }
-    string getDest() { return dest; }
-    double getPrice() { return price; }
-    int getCapacity() { return capacity; }
-    int getBooked() { return booked; }
-    void bookSeat() { booked++; }
-    void cancelSeat()
-    {
-        if (booked > 0)
-            booked--;
+    Flight *getLeft() { 
+        return left; 
     }
-    SeatHeap &getWaitlist() { return waitlist; }
+    Flight *getRight() { 
+        return right; 
+    }
+    void setLeft(Flight *l) { 
+        left = l; 
+    }
+    void setRight(Flight *r) { 
+        right = r; 
+    }
+
+    string getID() { 
+        return id; 
+    }
+
+    string getOrigin() { 
+        return origin; 
+    }
+
+    string getAirline() { 
+        return airline; 
+    }
+
+    string getDepTime() { 
+        return departureTime; 
+    }
+    string getArrTime() { 
+        return arrivalTime; 
+    }
+
+    string getDest() { 
+        return dest; 
+    }
+    double getPrice() { 
+        return price; 
+    }
+    int getCapacity() { 
+        return capacity; 
+    }
+    int getBooked() { 
+        return booked; 
+    }
+    void bookSeat() { 
+        if (booked < capacity){
+            booked++; 
+        }
+    }
+    void cancelSeat() {
+        if (booked > 0) {
+            booked--;
+        }
+    }
+
+    SeatHeap &getWaitlist() { 
+        return waitlist; 
+    }
 
     void display()
     {
@@ -203,30 +246,40 @@ public:
 
 class BST {
     Flight *root;
+
     Flight *insert(Flight *node, Flight *f) {
-        if (!node)
+        if (!node) {
             return f;
-        if (f->getID() < node->getID())
+        }
+        if (f->getID() < node->getID()){ 
             node->setLeft(insert(node->getLeft(), f));
-        else if (f->getID() > node->getID())
+        }
+        else if (f->getID() > node->getID()) {
             node->setRight(insert(node->getRight(), f));
+        }
         return node;
     }
+
     Flight *findMin(Flight *node) {
-        while (node->getLeft())
+        while (node->getLeft()) {
             node = node->getLeft();
+        }
         return node;
     }
-    Flight *removeNode(Flight *node, int id) {
+
+    Flight *removeNode(Flight *node, string id) {
         if (!node) {
             return nullptr;
         }
+
         if (id < node->getID()) {
             node->setLeft(removeNode(node->getLeft(), id));
         }  
+
         else if (id > node->getID()){ 
             node->setRight(removeNode(node->getRight(), id));
         }
+
         else {
             if (!node->getLeft()) {
                 Flight *temp = node->getRight();
@@ -251,28 +304,33 @@ public:
     BST() { 
         root = nullptr; 
     }
+
     Flight *getRoot() { 
         return root; 
     }
 
-    void insertFlight(int id, string o, string d, double p, int c, int b = 0) {
-        Flight *f = new Flight(id, o, d, p, c, b);
+    void insertFlight(string id, string airline, string o, string d, string dT, string aT, double p, int c, int b = 0) {
+        Flight *f = new Flight(id, airline, o, d, dT, aT, p, c, b);
         root = insert(root, f);
     }
 
-    Flight *find(Flight *node, int id) {
-        if (!node)
+    Flight *find(Flight *node, string id) {
+        if (!node) {
             return nullptr;
-        if (id == node->getID())
+        } 
+        if (id == node->getID()) {
             return node;
-        if (id < node->getID())
+        }
+        if (id < node->getID()) {
             return find(node->getLeft(), id);
+        }
         return find(node->getRight(), id);
     }
 
     void inorder(Flight *node) {
-        if (!node)
+        if (!node){ 
             return;
+        }
         inorder(node->getLeft());
         node->display();
         inorder(node->getRight());
@@ -288,14 +346,17 @@ public:
     }
 
     void sortByPrice(Flight *node, Flight **arr, int &index) {
-        if (!node)
+        if (!node){
             return;
+        }
         sortByPrice(node->getLeft(), arr, index);
         arr[index++] = node;
         sortByPrice(node->getRight(), arr, index);
     }
 
-    void deleteFlight(int id) { root = removeNode(root, id); }
+    void deleteFlight(string id) { 
+        root = removeNode(root, id); 
+    }
 };
 
 class Airport {
@@ -381,14 +442,13 @@ public:
     static void loadFlights(BST &flights, Graph &g, AirportTable &airports, int &airportCount)
     {
         ifstream fin("flights.txt");
-        if (fin)
-        {
-            int id, cap, booked;
+        if (fin) {
+            int cap, booked;
+            string id, airline, aT, dT;
             double price;
             string o, d;
-            while (fin >> id >> o >> d >> price >> cap >> booked)
-            {
-                flights.insertFlight(id, o, d, price, cap, booked);
+            while (fin >> id >> airline >> o >> d >> dT>> aT >> price >> cap >> booked) {
+                flights.insertFlight(id, airline, o, d, dT, aT, price, cap, booked);
                 int oi = airports.getAirportIndex(o, airportCount);
                 int di = airports.getAirportIndex(d, airportCount);
                 g.addEdge(oi, di, price);
@@ -397,8 +457,8 @@ public:
             fin.close();
         }
         ifstream win("waitlists.txt"); {
-            int fid, pr, ID;
-            string name;
+            int pr, ID;
+            string fid, name;
             while (win >> fid >> name >> pr)
             {
                 Flight *f = flights.find(flights.getRoot(), fid);
@@ -408,7 +468,7 @@ public:
             win.close();
         }
     }
-    static void logPassenger(const string &action, int fid, const string &name) {
+    static void logPassenger(const string &action, string fid, const string &name) {
         ofstream fout("passenger_history.txt", ios::app);
         fout << action << " FlightID:" << fid << " Passenger:" << name << "\n";
         fout.close();
@@ -428,22 +488,28 @@ int main() {
                 "10.Manage Waitlist\n 11.Round-trip Booking\n 12.Exit\nChoice: ";
         int ch;
         cin >> ch;
-        if (ch == 1)
-        {
-            int id, cap;
+        if (ch == 1) {
+            int cap;
+            string id, airline, aT, dT;
             double price;
             string o, d;
             cout << "Flight ID: ";
             cin >> id;
+            cout << "Airline: ";
+            cin >> airline;
             cout << "Origin: ";
             cin >> o;
             cout << "Destination: ";
             cin >> d;
+            cout << "Departure Time";
+            cin >> dT;
+            cout << "Arrival Time";
+            cin >> aT;
             cout << "Price: ";
             cin >> price;
             cout << "Capacity: ";
             cin >> cap;
-            flights.insertFlight(id, o, d, price, cap);
+            flights.insertFlight(id, airline, o, d, dT, aT, price, cap);
             int oi = airports.getAirportIndex(o, airportCount);
             int di = airports.getAirportIndex(d, airportCount);
             g.addEdge(oi, di, price);
@@ -453,20 +519,21 @@ int main() {
             flights.inorder(flights.getRoot());
         else if (ch == 3)
         {
-            int id, pr;
-            string name;
+            int pr, passID;
+            string id, name;
             cout << "Flight ID: ";
             cin >> id;
             Flight *f = flights.find(flights.getRoot(), id);
-            if (!f)
-            {
+            if (!f) {
                 cout << "Not found!\n";
                 continue;
             }
-            cout << "Passenger name: ";
+            cout << "Passenger Name: ";
             cin >> name;
             cout << "Priority (1-3): ";
             cin >> pr;
+            cout << "Passenger ID: ";
+            cin >> passID;
             if (f->getBooked() < f->getCapacity())
             {
                 f->bookSeat();
@@ -475,12 +542,12 @@ int main() {
             }
             else
             {
-                f->getWaitlist().push(name, id, pr);
+                f->getWaitlist().push(name, passID, pr);
                 cout << "Added to waitlist.\n";
             }
         }
         else if (ch == 4) {
-            int id;
+            string id;
             cout << "Flight ID: ";
             cin >> id;
             Flight *f = flights.find(flights.getRoot(), id);
@@ -556,7 +623,7 @@ int main() {
             }
         }
         else if (ch == 6) {
-            int id;
+            string id;
             cout << "Flight ID: ";
             cin >> id;
             Flight *f = flights.find(flights.getRoot(), id);
@@ -582,14 +649,14 @@ int main() {
                 arr[i]->display();
         }
         else if (ch == 9) {
-            int id;
+            string id;
             cout << "Flight ID to delete: ";
             cin >> id;
             flights.deleteFlight(id);
             cout << "Flight deleted.\n";
         }
         else if (ch == 10) {
-            int id;
+            string id;
             cout << "Flight ID: ";
             cin >> id;
             Flight *f = flights.find(flights.getRoot(), id);
@@ -604,9 +671,9 @@ int main() {
                 if (wc == 1)
                     f->getWaitlist().displayWaitlist();
                 else if (wc == 2){
-                    string name;
-                    cout << "Passenger name: ";
-                    cin >> name;
+                    int id;
+                    cout << "Passenger ID: ";
+                    cin >> id;
                     f->getWaitlist().removePassenger(id);
                 }
                 else if (wc == 3) {
@@ -626,8 +693,8 @@ int main() {
             }
         }
         else if (ch == 11) {
-            int id1, id2, ID;
-            string name;
+            int ID;
+            string id1, id2, name;
             cout << "Passenger name: ";
             cin >> name;
             cout << "Passenger ID: ";
