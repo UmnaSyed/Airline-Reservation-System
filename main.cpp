@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <ctime>
 #include <string>
 using namespace std;
 
@@ -398,6 +399,14 @@ public:
         }
         return table[h].index;
     }
+
+    string getAirportName(int index) {
+    for(int i=0; i<MAX_AIRPORTS; i++)
+        if(table[i].index == index)
+            return table[i].name;
+    return "";
+    }
+
 };
 
 class EdgeNode {
@@ -420,26 +429,34 @@ public:
     void addEdge(int src, int dest, double cost) { adj[src] = new EdgeNode(dest, cost, adj[src]); }
 };
 
-class FileManager
-{
+class FileManager {
 public:
-    static void saveFlights(Flight *node)
-    {
+    static void saveFlights(Flight *node, ofstream &fout, ofstream &wf) {
         if (!node)
             return;
-        saveFlights(node->getLeft());
-        ofstream fout("flights.txt", ios::app);
-        fout << node->getID() << " " << node->getOrigin() << " " << node->getDest()
-             << " " << node->getPrice() << " " << node->getCapacity() << " "
+        saveFlights(node->getLeft(), fout, wf);
+
+        fout << node->getID() << " " << node->getAirline() << " " 
+             << node->getOrigin() << " " << node->getDest() << " "
+             << node->getDepTime() << " " << node->getArrTime() << " "
+             << node->getPrice() << " " << node->getCapacity() << " " 
              << node->getBooked() << "\n";
-        fout.close();
-        ofstream wf("waitlists.txt", ios::app);
+
         SeatHeap &w = node->getWaitlist();
         for (int i = 0; i < w.getSize(); i++)
-            wf << node->getID() << " " << w.get(i).name << " " << w.get(i).id << " " << w.get(i).priority << "\n";
-        wf.close();
-        saveFlights(node->getRight());
+            wf << node->getID() << " " << w.get(i).name << " " << w.get(i).priority << "\n";
+
+        saveFlights(node->getRight(), fout, wf);
     }
+
+    static void saveAllFlights(Flight *root) {
+        ofstream fout("flights.txt");      
+        ofstream wf("waitlists.txt");    
+        saveFlights(root, fout, wf);
+        fout.close();
+        wf.close();
+    }
+
     static void loadFlights(BST &flights, Graph &g, AirportTable &airports, int &airportCount)
     {
         ifstream fin("flights.txt");
@@ -476,13 +493,46 @@ public:
     }
 };
 
+void generateDummyFlights(BST &flights, int count) {
+    string cities[] = {"LHR","DXB","ISB","KHI","LAX","NYC","DOH","DEL","MCT","BKK"};
+    string airlines[] = {"AirlineA","AirlineB","AirlineC","AirlineD"};
+    
+    for (int i = 1; i <= count; i++) {
+        string id = "F" + to_string(i);
+        string airline = airlines[rand() % 4];
+        string o = cities[rand() % 10];
+        string d;
+        do { 
+            d = cities[rand() % 10]; 
+        } while (d == o);
+        
+        int depHour = 1 + rand() % 23;
+        int depMin = rand() % 60;
+        int arrHour = (depHour + 2 + rand() % 5) % 24;
+        int arrMin = rand() % 60;
+        char depTime[6], arrTime[6];
+        sprintf(depTime, "%02d:%02d", depHour, depMin);
+        sprintf(arrTime, "%02d:%02d", arrHour, arrMin);
+
+        double price = 100 + rand() % 900;   
+        int cap = 50 + rand() % 100;         
+
+        flights.insertFlight(id, airline, o, d, depTime, arrTime, price, cap);
+    }
+}
+
+
 int main() {
     BST flights;
     Graph g;
     AirportTable airports;
     int airportCount = 0;
-    FileManager::loadFlights(flights, g, airports, airportCount);
 
+    srand(time(0));
+    generateDummyFlights(flights, 500);
+    FileManager::saveAllFlights(flights.getRoot());  
+    
+    FileManager::loadFlights(flights, g, airports, airportCount);
     while (true) {
         cout << " 1.Add Flight\n 2.List Flights\n 3.Reserve Seat\n 4.Cancel Seat\n 5.Find Cheapest Route\n "
                 "6.Display Waitlist\n 7.Search Flights\n 8.Sort Flights by Price\n 9.Delete Flight\n "
@@ -620,7 +670,7 @@ int main() {
                 for (int v = di; v != -1; v = parent[v])
                     path[len++] = v;
                 for (int i = len - 1; i >= 0; i--)
-                    cout << path[i] << (i ? " -> " : "\n");
+                    cout << airports.getAirportName(path[i]) << (i ? " -> " : "\n");
             }
         }
         else if (ch == 6) {
@@ -645,10 +695,20 @@ int main() {
         else if (ch == 8) {
             Flight *arr[1000];
             int idx = 0;
-            flights.sortByPrice(flights.getRoot(), arr, idx);
+            flights.sortByPrice(flights.getRoot(), arr, idx);  
+
+            for (int i = 0; i < idx - 1; i++) {
+            int minIdx = i;
+            for (int j = i + 1; j < idx; j++)
+            if (arr[j]->getPrice() < arr[minIdx]->getPrice())
+                minIdx = j;
+            if (minIdx != i)
+            std::swap(arr[i], arr[minIdx]);
+            }
             for (int i = 0; i < idx; i++)
-                arr[i]->display();
+            arr[i]->display();
         }
+
         else if (ch == 9) {
             string id;
             cout << "Flight ID to delete: ";
@@ -734,7 +794,7 @@ int main() {
         else if (ch == 12) {
             remove("flights.txt");
             remove("waitlists.txt");
-            FileManager::saveFlights(flights.getRoot());
+            FileManager::saveAllFlights(flights.getRoot());
             cout << "Data saved. Exiting.\n";
             break;
         }
