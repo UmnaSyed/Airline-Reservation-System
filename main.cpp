@@ -521,6 +521,19 @@ void generateDummyFlights(BST &flights, int count) {
     }
 }
 
+void collectFlights(Flight* node, const string &origin, const string &dest, Flight* arr[], int &idx) {
+    if (!node) return;
+
+    collectFlights(node->getLeft(), origin, dest, arr, idx);
+
+    if ((origin.empty() || node->getOrigin() == origin) &&
+        (dest.empty() || node->getDest() == dest)) {
+        arr[idx++] = node;
+    }
+
+    collectFlights(node->getRight(), origin, dest, arr, idx);
+}
+
 
 int main() {
     BST flights;
@@ -563,11 +576,6 @@ int main() {
             flights.insertFlight(id, airline, o, d, dT, aT, price, cap);
             int oi = airports.getAirportIndex(o, airportCount);
             int di = airports.getAirportIndex(d, airportCount);
-            if (oi == -1 || di == -1)
-            {
-                cout << "Error: Airport table full!\n";
-                continue;
-            }
             g.addEdge(oi, di, price);
             g.airportCount = airportCount;
         }
@@ -698,21 +706,41 @@ int main() {
             flights.displayByOriginDest(flights.getRoot(), o, d);
         }
         else if (ch == 8) {
-            Flight *arr[1000];
-            int idx = 0;
-            flights.sortByPrice(flights.getRoot(), arr, idx);  
+            string origin, dest;
+            cout << "Origin (or empty for any): ";
+            cin.ignore();
+            getline(cin, origin);
+            cout << "Destination (or empty for any): ";
+            getline(cin, dest);
 
-            for (int i = 0; i < idx - 1; i++) {
-            int minIdx = i;
-            for (int j = i + 1; j < idx; j++)
-            if (arr[j]->getPrice() < arr[minIdx]->getPrice())
-                minIdx = j;
-            if (minIdx != i)
-            std::swap(arr[i], arr[minIdx]);
+            Flight* arr[1000]; // fixed-size array
+            int idx = 0;
+
+        // Collect matching flights
+            collectFlights(flights.getRoot(), origin, dest, arr, idx);
+
+            if (idx == 0) {
+                cout << "No flights found for the given route.\n";
+            } 
+            
+            else {
+                // Sort by price using selection sort
+                for (int i = 0; i < idx - 1; i++) {
+                    int minIdx = i;
+                    for (int j = i + 1; j < idx; j++) {
+                        if (arr[j]->getPrice() < arr[minIdx]->getPrice())
+                            minIdx = j;
+                    }
+                    if (minIdx != i)
+                        swap(arr[i], arr[minIdx]);
+                }
+
+                // Display sorted flights
+                for (int i = 0; i < idx; i++)
+                    arr[i]->display();
             }
-            for (int i = 0; i < idx; i++)
-            arr[i]->display();
         }
+
 
         else if (ch == 9) {
             string id;
