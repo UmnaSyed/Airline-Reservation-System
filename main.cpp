@@ -563,6 +563,11 @@ int main() {
             flights.insertFlight(id, airline, o, d, dT, aT, price, cap);
             int oi = airports.getAirportIndex(o, airportCount);
             int di = airports.getAirportIndex(d, airportCount);
+            if (oi == -1 || di == -1)
+            {
+                cout << "Error: Airport table full!\n";
+                continue;
+            }
             g.addEdge(oi, di, price);
             g.airportCount = airportCount;
         }
