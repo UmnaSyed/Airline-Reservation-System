@@ -1,12 +1,16 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
+#include <limits>
 #include <string>
+#include <algorithm>
 using namespace std;
 
 #define MAX_AIRPORTS 50
 #define MAX_WAIT 100
 #define INF 1e9
+
+class Flight;
 
 class SeatRequest {
 public:
@@ -72,7 +76,7 @@ public:
 
     void push(string name, int ID,  int priority){
         if (size >= MAX_WAIT){
-        cout << "Error: Waitlist if full!" << endl;
+        cout << "Error: Waitlist is full!" << endl;
             return;
         }
         arr[size] = SeatRequest(name, ID, priority, ++timeCount);
@@ -119,9 +123,16 @@ public:
     }
 
     SeatRequest pop() {
+        if (size==0){
+            return SeatRequest();
+        }
+
         SeatRequest top = arr[0];
-        arr[0] = arr[--size];
-        heapifyDown(0);
+        size--;
+        if (size > 0){
+            arr[0] = arr[size];
+            heapifyDown(0);
+        }
         return top;
     }
     
@@ -144,9 +155,12 @@ public:
     void removePassenger(int ID) {
         for (int i = 0; i < size; i++) {
             if (arr[i].id == ID) {
-                arr[i] = arr[--size];
-                heapifyUp(i);
-                heapifyDown(i);
+                size--;
+                if (i < size){
+                    arr[i] = arr[size];
+                    heapifyUp(i);
+                    heapifyDown(i);
+                }
                 cout << "Passenger " << ID << " removed from list found in waitlist.\n";
                 return;
             }
@@ -168,8 +182,7 @@ public:
     }
 };
 
-class Flight
-{
+class Flight {
     string id;
     string airline, departureTime, arrivalTime;
     string origin, dest;
@@ -200,6 +213,17 @@ public:
     }
     ~Flight(){
         delete[] bookedPassengers;
+    }
+
+    void addPassenger(const string &name, int ID) {
+        if (booked < capacity) {
+            bookedPassengers[booked].name = name;
+            bookedPassengers[booked].id = ID;
+        }
+    }
+    
+    void setID(const string& newID){
+        id=newID;
     }
 
     Flight *getLeft() { 
@@ -257,6 +281,18 @@ public:
         }
     }
 
+    void copyFrom(Flight* f){
+        this->id = f->id;
+        this->airline = f->airline;
+        this->origin = f->origin;
+        this->dest = f->dest;
+        this->departureTime = f->departureTime;
+        this->arrivalTime = f->arrivalTime;
+        this->price = f->price;
+        this->capacity = f->capacity;
+        this->booked = f->booked;
+    }
+
     SeatHeap &getWaitlist() { 
         return waitlist; 
     }
@@ -264,7 +300,8 @@ public:
     bool cancelSeatByPassenger(const string &name, int ID) {
         for (int i = 0; i < booked; i++) {
             if (bookedPassengers[i].id == ID && bookedPassengers[i].name == name) {
-                bookedPassengers[i] = bookedPassengers[--booked];
+                bookedPassengers[i] = bookedPassengers[booked-1];
+                booked--;
                 return true;
             }
         }
@@ -328,11 +365,20 @@ class BST {
             }
             else {
                 Flight *temp = findMin(node->getRight());
+                node->copyFrom(temp);
                 node->setRight(removeNode(node->getRight(), temp->getID()));
-                *node = *temp;
             }
         }
         return node;
+    }
+
+    void deleteTree(Flight *node) {
+        if (!node) {
+            return;
+        }
+        deleteTree(node->getLeft());
+        deleteTree(node->getRight());
+        delete node; 
     }
 
 public:
@@ -392,6 +438,11 @@ public:
     void deleteFlight(string id) { 
         root = removeNode(root, id); 
     }
+
+    ~BST() {
+        deleteTree(root);
+        root = nullptr; 
+    }
 };
 
 class Airport {
@@ -418,14 +469,12 @@ public:
     }
     int getAirportIndex(const string &name, int &count) {
         int h = hashFunc(name), start = h;
-        while (used[h] && table[h].name != name)
-        {
+        while (used[h] && table[h].name != name) {
             h = (h + 1) % MAX_AIRPORTS;
             if (h == start)
                 return -1;
         }
-        if (!used[h])
-        {
+        if (!used[h]) {
             table[h].name = name;
             table[h].index = count++;
             used[h] = 1;
@@ -433,13 +482,15 @@ public:
         return table[h].index;
     }
 
-    string getAirportName(int index) {
-    for(int i=0; i<MAX_AIRPORTS; i++)
-        if(table[i].index == index)
-            return table[i].name;
-    return "";
+    string getAirportName(int index) const {
+        for (int i=0; i<MAX_AIRPORTS; i++){
+            if(table[i].index == index){
+                return table[i].name;
+            }
+        }
+        cout << "ERROR! Airport Index "<< index << " not found!\n";
+        return "Unknown";
     }
-
 };
 
 class EdgeNode {
@@ -454,12 +505,97 @@ class Graph {
 public:
     EdgeNode *adj[MAX_AIRPORTS];
     int airportCount;
+
     Graph() {
-        airportCount = 0;
-        for (int i = 0; i < MAX_AIRPORTS; i++)
-            adj[i] = nullptr;
+    airportCount = 0;
+    for (int i = 0; i < MAX_AIRPORTS; i++)
+    adj[i] = nullptr;
     }
-    void addEdge(int src, int dest, double cost) { adj[src] = new EdgeNode(dest, cost, adj[src]); }
+
+    void addEdge(int src, int dest, double cost) { 
+        if (src < 0 || src>=airportCount || dest < 0 || dest >= airportCount){
+            cout<<"ERROR! Invalid Edge!\n"<< src << "-->" << dest << " is out of range!\n";
+            return;
+        }
+        EdgeNode* newEdge = new EdgeNode(dest, cost, adj[src]);
+        adj[src] = newEdge;
+    }
+
+    double findShortestPath(int src, int dest, const AirportTable &airports) {
+        if (src == -1 || dest == -1) {
+            cout<< "ERROR: Invalid Airport Selection!\n";
+            return INF; 
+        }
+        if (airportCount < 2) {
+            cout << "Not enough airports to compute routes!\n";
+            return INF;
+        }
+
+        double dist[MAX_AIRPORTS];
+        int parent[MAX_AIRPORTS];
+        bool vis[MAX_AIRPORTS];
+        
+        for (int i = 0; i < airportCount; i++) {
+            dist[i] = INF;
+            vis[i] = false;
+            parent[i] = -1;
+        }
+        dist[src] = 0;
+        
+        for (int count = 0; count < airportCount - 1; count++) {
+            double minv = INF;
+            int u = -1;
+            for (int i = 0; i < airportCount; i++) {
+                if (!vis[i] && dist[i] <= minv) {
+                    minv = dist[i];
+                    u = i;
+                }
+            }
+
+            if (u == -1) break; 
+            vis[u] = true;
+            
+            for (EdgeNode* e = adj[u]; e; e = e->next)
+                if (!vis[e->dest] && dist[u] + e->cost < dist[e->dest]) {
+                    dist[e->dest] = dist[u] + e->cost;
+                    parent[e->dest] = u;
+                }
+        }
+        if (dist[dest] == INF) {
+            cout<< "No flight exists between the selected airports!\n";
+            return INF;
+        }    
+            
+        cout << "Cheapest cost: $" << dist[dest] << "\nPath: ";
+        int path[MAX_AIRPORTS], len = 0;
+        for (int v = dest; v != -1; v = parent[v]){
+            path[len++] = v;
+        }
+
+        for (int i = len - 1; i >= 0; i--) {
+            cout << airports.getAirportName(path[i]);
+            if (i) {
+                cout << " -> ";
+            }
+            else {
+                cout << "\n";
+            }
+        }
+
+        return dist[dest];
+    }
+
+    ~Graph() {
+        for (int i = 0; i < MAX_AIRPORTS; i++) {
+            EdgeNode* current = adj[i];
+            while (current) {
+                EdgeNode* next = current->next;
+                delete current;
+                current = next;
+            }
+            adj[i] = nullptr;
+        }
+    }
 };
 
 class FileManager {
@@ -477,7 +613,7 @@ public:
 
         SeatHeap &w = node->getWaitlist();
         for (int i = 0; i < w.getSize(); i++)
-            wf << node->getID() << " " << w.get(i).name << " " << w.get(i).priority << "\n";
+            wf << node->getID() << " " << w.get(i).name << " "  << w.get(i).id << " " << w.get(i).priority << "\n";
 
         saveFlights(node->getRight(), fout, wf);
     }
@@ -491,34 +627,37 @@ public:
     }
 
     static void loadFlights(BST &flights, Graph &g, AirportTable &airports, int &airportCount)
-    {
-        ifstream fin("flights.txt");
-        if (fin) {
-            int cap, booked;
-            string id, airline, aT, dT;
-            double price;
-            string o, d;
-            while (fin >> id >> airline >> o >> d >> dT>> aT >> price >> cap >> booked) {
-                flights.insertFlight(id, airline, o, d, dT, aT, price, cap, booked);
-                int oi = airports.getAirportIndex(o, airportCount);
-                int di = airports.getAirportIndex(d, airportCount);
-                g.addEdge(oi, di, price);
-            }
-            g.airportCount = airportCount;
-            fin.close();
+{
+    ifstream fin("flights.txt");
+    if (fin) {
+        int cap, booked;
+        string id, airline, aT, dT;
+        double price;
+        string o, d;
+        while (fin >> id >> airline >> o >> d >> dT >> aT >> price >> cap >> booked) {
+            flights.insertFlight(id, airline, o, d, dT, aT, price, cap, booked);
+            int oi = airports.getAirportIndex(o, airportCount);
+            int di = airports.getAirportIndex(d, airportCount);
+            g.airportCount = airportCount;  // Update airportCount continuously
+            g.addEdge(oi, di, price);
         }
-        ifstream win("waitlists.txt"); {
-            int pr, ID;
-            string fid, name;
-            while (win >> fid >> name >> ID >> pr)
-            {
-                Flight *f = flights.find(flights.getRoot(), fid);
-                if (f)
-                    f->getWaitlist().push(name, ID, pr);
-            }
-            win.close();
-        }
+        fin.close();
     }
+    
+    ifstream win("waitlists.txt");  
+    if (win) {
+        int pr, ID;
+        string fid, name;
+        while (win >> fid >> name >> ID >> pr)
+        {
+            Flight *f = flights.find(flights.getRoot(), fid);
+            if (f)
+                f->getWaitlist().push(name, ID, pr);
+        }
+        win.close();
+    }
+}
+
     static void logPassenger(const string &action, string fid, const string &name) {
         ofstream fout("passenger_history.txt", ios::app);
         fout << action << " FlightID:" << fid << " Passenger:" << name << "\n";
@@ -545,39 +684,28 @@ void swap(Flight* &a, Flight* &b) {
     b = t;
 }
 
-// Function to partition the array (Lomuto Partition Scheme)
-// Returns the index of the pivot element after partitioning.
 int partition(Flight** arr, int low, int high) {
-    // Select the last element as the pivot
     double pivotPrice = arr[high]->getPrice(); 
     
-    // Index of smaller element
     int i = (low - 1); 
 
     for (int j = low; j <= high - 1; j++) {
-        // If current element's price is smaller than the pivot price
         if (arr[j]->getPrice() < pivotPrice) {
             i++; 
             swap(arr[i], arr[j]);
         }
     }
-    // Swap the pivot element with the element at i+1
     swap(arr[i + 1], arr[high]);
     return (i + 1);
 }
 
-// The main function that implements QuickSort 
 void quickSort(Flight** arr, int low, int high) {
     if (low < high) {
-        // pi is partitioning index, arr[pi] is now at right place
         int pi = partition(arr, low, high);
 
-        // Separately sort elements before partition and after partition
-        quickSort(arr, low, pi - 1);
         quickSort(arr, pi + 1, high);
     }
 }
-
 
 void testRuntimes(BST &flights, Graph &g, AirportTable &airports, int airportcount) {
     cout << "\nTESTING RUNTIMES\n\n";
@@ -673,44 +801,16 @@ void testRuntimes(BST &flights, Graph &g, AirportTable &airports, int airportcou
         int destIdx = g.airportCount - 1;
         
         start = clock();
-        
-        double dist[MAX_AIRPORTS];
-        int parent[MAX_AIRPORTS];
-        bool vis[MAX_AIRPORTS];
-        
-        for (int i = 0; i < g.airportCount; i++) {
-            dist[i] = INF;
-            vis[i] = false;
-            parent[i] = -1;
-        }
-        dist[sourceIdx] = 0;
-        
-        for (int count = 0; count < g.airportCount - 1; count++) {
-            double minv = INF;
-            int u = -1;
-            for (int i = 0; i < g.airportCount; i++)
-                if (!vis[i] && dist[i] <= minv) {
-                    minv = dist[i];
-                    u = i;
-                }
-            if (u == -1) break;
-            vis[u] = true;
-            
-            for (EdgeNode* e = g.adj[u]; e; e = e->next)
-                if (!vis[e->dest] && dist[u] + e->cost < dist[e->dest]) {
-                    dist[e->dest] = dist[u] + e->cost;
-                    parent[e->dest] = u;
-                }
-        }
-        
+        double cost = g.findShortestPath(sourceIdx, destIdx, airports);
         end = clock();
+    
         time = ((double)(end - start) / CLOCKS_PER_SEC) * 1000.0;
         
         cout << "Dijkstra on " << g.airportCount << " airports: " << time << " ms\n";
-        if (dist[destIdx] < INF) {
-            cout << "Shortest path cost: $" << dist[destIdx] << "\n\n";
-        } else {
+        if (cost >= INF) {
             cout << "No path found.\n\n";
+        } else {
+            cout << "Shortest path cost: $" << cost << "\n\n";
         }
     }
 }
@@ -810,15 +910,13 @@ int main() {
             cout << "Passenger ID: ";
             cin >> passID;
            
-            if (f->getBooked() < f->getCapacity())
-            {
+            if (f->getBooked() < f->getCapacity()) {
+                f->addPassenger(name,passID);
                 f->bookSeat();
                 cout << "Seat confirmed!\n";
                 FileManager::logPassenger("Booked", id, name);
             }
-            else
-            {
-
+            else {
                 if (f->getWaitlist().hasPassengerID(passID)) {
                     cout << "Error: Passenger ID " << passID << " is already in waitlist!\n";
                     continue;
@@ -847,22 +945,27 @@ int main() {
             cout << "Passenger ID: ";
             cin >> passID;
 
-            if (f->getBooked() > 0) {
-                f->cancelSeat();
+            if (f->cancelSeatByPassenger(passName, passID)) {
                 cout << "Seat for " << passName << " (ID " << passID << ") cancelled.\n";
+                FileManager::logPassenger("Cancelled", flightID, passName);
 
                 SeatHeap &waitlist = f->getWaitlist();
                 if (!waitlist.empty()) {
                     SeatRequest next = waitlist.pop(); 
-                    f->bookSeat();                    
+                    f->addPassenger(next.name, next.id); 
+                    f->bookSeat(); 
+                                  
                     cout << "Seat automatically assigned to " << next.name 
-                        << " (priority " << next.priority << ")\n";
+                         << " (priority " << next.priority << ")\n";
                     FileManager::logPassenger("Booked from Waitlist", flightID, next.name);
                 }
             } 
-            
+            else if (f->getWaitlist().hasPassengerID(passID)) {
+                 f->getWaitlist().removePassenger(passID);
+                 cout << "Passenger " << passID << " found and removed from waitlist.\n";
+            }
             else {
-                    cout << "No booked seats to cancel.\n";
+                cout << "Passenger not found in booked seats or waitlist for this flight.\n";
             }
         }
 
@@ -872,50 +975,20 @@ int main() {
             cin >> o;
             cout << "To: ";
             cin >> d;
-            int oi = airports.getAirportIndex(o, airportCount);
-            int di = airports.getAirportIndex(d, airportCount);
-            double dist[MAX_AIRPORTS];
-            int parent[MAX_AIRPORTS];
-            bool vis[MAX_AIRPORTS];
-            for (int i = 0; i < g.airportCount; i++)
-            {
-                dist[i] = INF;
-                vis[i] = false;
-                parent[i] = -1;
-            }
-            dist[oi] = 0;
-            for (int count = 0; count < g.airportCount - 1; count++)
-            {
-                double minv = INF;
-                int u = -1;
-                for (int i = 0; i < g.airportCount; i++)
-                    if (!vis[i] && dist[i] <= minv)
-                    {
-                        minv = dist[i];
-                        u = i;
-                    }
-                if (u == -1)
-                    break;
-                vis[u] = true;
-                for (EdgeNode *e = g.adj[u]; e; e = e->next)
-                    if (!vis[e->dest] && dist[u] + e->cost < dist[e->dest])
-                    {
-                        dist[e->dest] = dist[u] + e->cost;
-                        parent[e->dest] = u;
-                    }
-            }
-            if (dist[di] >= INF) {
-                cout << "No route found.\n";
+
+            int tempCount = airportCount;
+            int oi = airports.getAirportIndex(o, tempCount);
+            int di = airports.getAirportIndex(d, tempCount);
+            
+            if (oi==-1 || di==-1 || oi >= airportCount || di >= airportCount ){
+                cout<<"ERROR! Aiports not found in the current flight network!\n";
+                continue;
             }
             else {
-                cout << "Cheapest cost: $" << dist[di] << "\nPath: ";
-                int path[MAX_AIRPORTS], len = 0;
-                for (int v = di; v != -1; v = parent[v])
-                    path[len++] = v;
-                for (int i = len - 1; i >= 0; i--)
-                    cout << airports.getAirportName(path[i]) << (i ? " -> " : "\n");
+                double cost = g.findShortestPath(oi, di, airports);
             }
         }
+
         else if (ch == 6) {
             string id;
             cout << "Flight ID: ";
@@ -943,10 +1016,9 @@ int main() {
             cout << "Destination (or empty for any): ";
             getline(cin, dest);
 
-            Flight* arr[1000]; // fixed-size array
+            Flight* arr[1000]; 
             int idx = 0;
 
-        // Collect matching flights
             collectFlights(flights.getRoot(), origin, dest, arr, idx);
 
             if (idx == 0) {
@@ -954,10 +1026,7 @@ int main() {
             } 
             
             else {
-                // Sort by price using Quick Sort (O(n log n) average)
                 quickSort(arr, 0, idx - 1);
-
-                // Display sorted flights
                 cout << "Flights Sorted by Price:\n";
                 for (int i = 0; i < idx; i++)
                     arr[i]->display();
