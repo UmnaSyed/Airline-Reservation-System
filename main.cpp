@@ -884,9 +884,8 @@ int main() {
 
             flights.inorder(flights.getRoot());
         }
-        else if (ch == 3)
-        {
-            int pr, passID;
+        else if (ch == 3) {
+            int pr=0, passID;
             string id, name;
             cout << "Flight ID: ";
             cin >> id;
@@ -898,15 +897,26 @@ int main() {
             }
 
             cout << "Passenger Name: ";
-            cin >> name;
-            cout << "Priority (1-3): ";
-            cin >> pr;
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear buffer
+            getline(cin, name);
            
-            if (pr < 1 || pr > 3) {
-                cout << "Error: Priority must be between 1 and 3!\n";
+            char option;
+
+            cout << "Enter Category (F for First Class, B for Business Class, E for Economy Class): ";
+            cin >> option;
+            if (option == 'F' || option == 'f'){
+                pr = 3;
+            }
+            else if (option == 'b' || option == 'B'){
+                pr = 2;
+            }
+            else if (option == 'E' || option == 'e'){
+                pr = 1;
+            }
+            else {
+                cout << "Error: Invalid Option, enter the correct option!\n";
                 continue;
             }
-
             cout << "Passenger ID: ";
             cin >> passID;
            
@@ -923,7 +933,7 @@ int main() {
                 }
 
                 f->getWaitlist().push(name, passID, pr);
-                cout << "Added to waitlist.\n";
+                cout << "All seats are booked! Passenger added to waitlist.\n";
             }
         }
 
