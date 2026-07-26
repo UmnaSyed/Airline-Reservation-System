@@ -17,7 +17,7 @@ This project simulates a real-world airline booking system: adding and managing 
 - **Runtime benchmarking** — built-in comparison of search and sorting algorithm performance on the current flight data
 - **Persistent storage** — flights, waitlists, and passenger history are saved to and loaded from disk automatically
 
-## 🏗️ Data Structures & Algorithms
+## Data Structures & Algorithms
 
 | Component | Structure / Algorithm | Purpose |
 |---|---|---|
@@ -28,7 +28,7 @@ This project simulates a real-world airline booking system: adding and managing 
 | **Sorting** | Quick Sort, Selection Sort, Bubble Sort | Available for sorting flights by price; also benchmarked against each other |
 | **Persistence** | File I/O (`flights.txt`, `waitlists.txt`, `passenger_history.txt`) | Saves and restores system state between sessions |
 
-## 📋 Menu Options
+## Menu Options
 
 ```
  1.  Add Flight
